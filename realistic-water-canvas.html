@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Canvas 2D Realistic Water Animation with Shooting Star</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a1e30; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="water"></canvas>
+<script>
+const canvas = document.getElementById('water');
+const ctx = canvas.getContext('2d');
+let width = window.innerWidth;
+let height = window.innerHeight;
+canvas.width = width;
+canvas.height = height;
+
+function resize() {
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = width;
+  canvas.height = height;
+}
+window.addEventListener('resize', resize);
+
+const baseColor = '#0f3d57';
+const waveHighlightColors = [
+  'rgba(200,230,255,0.3)',
+  'rgba(150,210,255,0.2)'
+];
+
+const waveLayers = 4;
+const waveParams = [];
+for (let i = 0; i < waveLayers; i++) {
+  waveParams.push({
+    amplitude: 10 + 8 * i,
+    wavelength: 180 - 30 * i,
+    speed: 0.15 + 0.05 * i,
+    phase: Math.random() * Math.PI * 2
+  });
+}
+
+function getWaveY(x, time) {
+  let y = height * 0.5 + 20 * (0 - 1.5);
+  y += Math.sin((x / waveParams[0].wavelength) + (time * waveParams[0].speed) + waveParams[0].phase) * waveParams[0].amplitude;
+  y += Math.sin((x / (waveParams[0].wavelength * 0.5)) + (time * waveParams[0].speed * 1.5) + waveParams[0].phase) * (waveParams[0].amplitude * 0.3);
+  return y;
+}
+
+const starCount = 120;
+const stars = [];
+for (let i = 0; i < starCount; i++) {
+  stars.push({
+    x: Math.random() * width,
+    y: Math.random() * (height * 0.4),
+    radius: Math.random() * 1.2 + 0.5,
+    baseAlpha: Math.random() * 0.6 + 0.4,
+    twinkleFreq: Math.random() * 1.5 + 0.5,
+    twinklePhase: Math.random() * Math.PI * 2,
+  });
+}
+
+function drawStars(time) {
+  stars.forEach(star => {
+    const twinkle = (Math.sin(time * star.twinkleFreq + star.twinklePhase) + 1) / 2;
+    const alpha = star.baseAlpha * (0.5 + 0.5 * twinkle);
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+    ctx.shadowColor = 'white';
+    ctx.shadowBlur = 6 * alpha;
+    ctx.fill();
+  });
+}
+
+function drawMoon() {
+  const moonX = width * 0.85;
+  const moonY = height * 0.15;
+  const moonRadius = 50;
+  let gradient = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.9, moonX, moonY, moonRadius * 1.6);
+  gradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+  gradient.addColorStop(1, 'rgba(255,255,200, 0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonRadius * 1.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 210, 0.95)';
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Animated lily bases function unchanged
+function drawLily(x, y, scale = 1, reflection = false, petalColor1 = '#f7faf7', petalColor2 = '#e6e6e6', centerColor = '#ffe066', time = 0, phaseOffset = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (reflection) {
+    ctx.scale(1, -1);
+    ctx.globalAlpha = 0.18;
+  }
+  const baseRadiusX = 55 * scale;
+  const baseRadiusY = 22 * scale;
+  const baseRadiusX2 = 18 * scale;
+  const baseRadiusY2 = 7 * scale;
+  const amplitude = 2 * scale;
+  const tiltBase = -0.2;
+  const tilt = tiltBase + Math.sin(time + phaseOffset) * 0.08;
+  ctx.save();
+  ctx.rotate(tilt);
+  ctx.beginPath();
+  const radiusX = baseRadiusX + Math.sin(time * 1.5 + phaseOffset) * amplitude;
+  const radiusY = baseRadiusY + Math.cos(time * 1.3 + phaseOffset) * (amplitude * 0.6);
+  ctx.ellipse(0, 28 * scale, radiusX, radiusY, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#6a9c5a';
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.rotate(tilt * 0.85);
+  ctx.beginPath();
+  const radiusX2 = baseRadiusX2 + Math.sin(time * 1.2 + phaseOffset) * (amplitude * 0.7);
+  const radiusY2 = baseRadiusY2 + Math.cos(time * 1.1 + phaseOffset) * (amplitude * 0.35);
+  ctx.ellipse(10 * scale, 32 * scale, radiusX2, radiusY2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#4d7a3a';
+  ctx.fill();
+  ctx.restore();
+  for (let i = 0; i < 13; i++) {
+    ctx.save();
+    ctx.rotate((Math.PI * 2 / 13) * i - 0.2);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(10 * scale, -30 * scale, 0, -55 * scale);
+    ctx.quadraticCurveTo(-10 * scale, -30 * scale, 0, 0);
+    ctx.closePath();
+    ctx.fillStyle = i % 2 === 0 ? petalColor1 : petalColor2;
+    ctx.shadowColor = '#d0eaff';
+    ctx.shadowBlur = 7;
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.beginPath();
+  ctx.ellipse(0, -10 * scale, 13 * scale, 10 * scale, 0, 0, Math.PI * 2);
+  ctx.fillStyle = centerColor;
+  ctx.shadowBlur = 0;
+  ctx.fill();
+  ctx.restore();
+}
+
+const flowers = [
+  {
+    baseX: 0.15,
+    scale: 1,
+    petalColor1: '#f7faf7',
+    petalColor2: '#e6e6e6',
+    centerColor: '#ffe066',
+    swayAmp: 8,
+    swayFreq: 0.8,
+    phaseOffset: 0,
+    yOffset: 0
+  },
+  {
+    baseX: 0.35,
+    scale: 0.85,
+    petalColor1: '#c7d8a7',
+    petalColor2: '#9ead7b',
+    centerColor: '#d6dba3',
+    swayAmp: 6,
+    swayFreq: 1.0,
+    phaseOffset: 1.5,
+    yOffset: -6
+  },
+  {
+    baseX: 0.55,
+    scale: 1.1,
+    petalColor1: '#f4eae6',
+    petalColor2: '#d9c4b6',
+    centerColor: '#f9d6b3',
+    swayAmp: 7,
+    swayFreq: 0.9,
+    phaseOffset: 3.0,
+    yOffset: 4
+  },
+  {
+    baseX: 0.75,
+    scale: 0.75,
+    petalColor1: '#d2e6f0',
+    petalColor2: '#a4c9e1',
+    centerColor: '#f0f7fc',
+    swayAmp: 5,
+    swayFreq: 1.2,
+    phaseOffset: 2.4,
+    yOffset: -3
+  }
+];
+
+// Shooting star object and functions
+const shootingStar = {
+  x: -100,
+  y: 0,
+  len: 120,
+  speed: 600, // pixels per second
+  angle: Math.PI / 4,
+  active: false,
+  waitTime: 0,
+  elapsed: 0
+};
+
+function resetShootingStar() {
+  shootingStar.x = Math.random() * width * 0.5;
+  shootingStar.y = Math.random() * height * 0.3;
+  shootingStar.len = 80 + Math.random() * 80;
+  shootingStar.speed = 400 + Math.random() * 300;
+  shootingStar.angle = Math.PI / 4 + (Math.random() - 0.5) * 0.3;
+  shootingStar.elapsed = 0;
+  shootingStar.active = true;
+  shootingStar.startTime = performance.now();
+  shootingStar.endX = shootingStar.x + Math.cos(shootingStar.angle) * shootingStar.len * 5;
+  shootingStar.endY = shootingStar.y + Math.sin(shootingStar.angle) * shootingStar.len * 5;
+}
+
+resetShootingStar();
+
+function drawShootingStar(deltaTime) {
+  if (!shootingStar.active) {
+    shootingStar.waitTime -= deltaTime;
+    if (shootingStar.waitTime <= 0) {
+      resetShootingStar();
+    }
+    return;
+  }
+
+  shootingStar.elapsed += deltaTime;
+  const distance = shootingStar.speed * shootingStar.elapsed;
+  const currentX = shootingStar.x + Math.cos(shootingStar.angle) * distance;
+  const currentY = shootingStar.y + Math.sin(shootingStar.angle) * distance;
+
+  // If shooting star is out of visible sky, deactivate and wait some time
+  if (currentX > width || currentY > height * 0.5 || currentY < 0) {
+    shootingStar.active = false;
+    shootingStar.waitTime = 4000 + Math.random() * 6000; // wait 4-10 seconds before next
+    return;
+  }
+
+  const trailLen = shootingStar.len;
+  const gradient = ctx.createLinearGradient(currentX, currentY, currentX - Math.cos(shootingStar.angle) * trailLen, currentY - Math.sin(shootingStar.angle) * trailLen);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(currentX, currentY);
+  ctx.lineTo(currentX - Math.cos(shootingStar.angle) * trailLen, currentY - Math.sin(shootingStar.angle) * trailLen);
+  ctx.stroke();
+
+  // Draw star head
+  ctx.beginPath();
+  ctx.arc(currentX, currentY, 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'white';
+  ctx.shadowColor = 'white';
+  ctx.shadowBlur = 10;
+  ctx.fill();
+}
+
+function drawWater(time) {
+  ctx.clearRect(0, 0, width, height);
+
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.5);
+  skyGradient.addColorStop(0, '#0a1e30');
+  skyGradient.addColorStop(1, '#063251');
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(0, 0, width, height * 0.5);
+
+  drawStars(time);
+  drawMoon();
+
+  drawShootingStar(time * 1000);
+
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, height * 0.5, width, height * 0.5);
+
+  for (let l = 0; l < waveLayers; l++) {
+    ctx.save();
+    let alpha = 0.16 + 0.12 * l;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    for (let x = 0; x <= width; x += 2) {
+      let y = height * 0.5 + 20 * (l - 1.5);
+      y += Math.sin((x / waveParams[l].wavelength) + (time * waveParams[l].speed) + waveParams[l].phase) * waveParams[l].amplitude;
+      y += Math.sin((x / (waveParams[l].wavelength * 0.5)) + (time * waveParams[l].speed * 1.5) + waveParams[l].phase) * (waveParams[l].amplitude * 0.3);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.lineTo(width, height);
+    ctx.lineTo(0, height);
+    ctx.closePath();
+    let gradient = ctx.createLinearGradient(0, height * 0.5 + 20 * (l - 1.5), 0, height);
+    gradient.addColorStop(0, baseColor);
+    gradient.addColorStop(1, '#063147');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  for (let l = 0; l < waveHighlightColors.length; l++) {
+    ctx.save();
+    ctx.globalAlpha = l === 0 ? 0.28 : 0.18;
+    ctx.beginPath();
+    for (let x = 0; x <= width; x += 2) {
+      let y = height * 0.5 + 20 * (l - 0.5);
+      y += Math.sin((x / (110 + 30 * l)) + (time * (0.22 + 0.07 * l))) * (8 + 4 * l);
+      y += Math.sin((x / (60 + 10 * l)) + (time * (0.4 + 0.1 * l))) * (3 + 2 * l);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = waveHighlightColors[l];
+    ctx.lineWidth = 2.5 - l;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  flowers.forEach(({baseX, scale, petalColor1, petalColor2, centerColor, swayAmp, swayFreq, phaseOffset, yOffset}) => {
+    const basePosX = width * baseX;
+    const swayX = basePosX + Math.sin(time * swayFreq + phaseOffset + waveParams[0].phase) * swayAmp;
+    const posY = getWaveY(basePosX, time) + yOffset;
+    drawLily(swayX, posY + 60, scale, true, petalColor1, petalColor2, centerColor, time, phaseOffset);
+    drawLily(swayX, posY, scale, false, petalColor1, petalColor2, centerColor, time, phaseOffset);
+  });
+}
+
+function animate(time) {
+  drawWater(time * 0.001);
+  requestAnimationFrame(animate);
+}
+
+animate(0);
+</script>
+</body>
+</html>
