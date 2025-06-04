@@ -3,35 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Canvas 2D Realistic Water Animation Optimized Frame</title>
+  <title>Canvas 2D Water Animation with Lowered Water and Flowers</title>
   <style>
-    body {
+    html, body {
       margin: 0;
-      overflow: hidden;
+      height: 100%;
       background: #0a1e30;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       user-select: none;
       -webkit-user-select: none;
+      overflow: hidden;
     }
     canvas {
-      display: block;
-      width: 100vw;
+      width: 90vw;
       max-width: 900px;
-      height: 60vh;
-      max-height: 450px;
-      margin: 0 auto;
-      touch-action: none;
-    }
-    @media (min-width: 600px) {
-      canvas {
-        height: 70vh;
-        max-height: 600px;
-      }
-    }
-    @media (min-width: 900px) {
-      canvas {
-        height: 80vh;
-        max-height: 700px;
-      }
+      height: auto;
+      max-height: 80vh;
+      display: block;
     }
   </style>
 </head>
@@ -44,42 +34,35 @@ const ctx = canvas.getContext('2d');
 let width, height, dpr;
 let waveStep, waveAmplitudeMultiplier;
 
+// Increase sky portion so water is lower
+const skyRatio = 0.6;  // increased from 0.35
+const waterRatio = 1 - skyRatio;
+
 function resize() {
   dpr = window.devicePixelRatio || 1;
-  width = window.innerWidth;
-  // Cap height with viewport ratio and max height constraints
-  let cappedHeight = window.innerHeight;
-  if (width <= 600) {
-    cappedHeight = Math.min(window.innerHeight, window.innerHeight * 0.6, 450);
-  } else if (width <= 900) {
-    cappedHeight = Math.min(window.innerHeight, window.innerHeight * 0.7, 600);
-  } else {
-    cappedHeight = Math.min(window.innerHeight, window.innerHeight * 0.8, 700);
-  }
-  height = cappedHeight;
 
-  // Set canvas size with device pixel ratio for sharpness
-  canvas.style.width = width + 'px';
-  canvas.style.height = height + 'px';
+  const style = getComputedStyle(canvas);
+  width = parseInt(style.getPropertyValue('width'));
+  height = parseInt(style.getPropertyValue('height'));
+
   canvas.width = width * dpr;
   canvas.height = height * dpr;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
-  // Adjust wave detail / amplitude based on device width
   if (width <= 600) {
-    waveStep = 4; // fewer points for performance
-    waveAmplitudeMultiplier = 0.7; // reduce amplitude for smaller screen
+    waveStep = 4;
+    waveAmplitudeMultiplier = 0.7;
   } else if (width <= 900) {
     waveStep = 3;
     waveAmplitudeMultiplier = 0.85;
   } else {
-    waveStep = 2; // higher detail for desktop
+    waveStep = 2;
     waveAmplitudeMultiplier = 1;
   }
 }
-resize();
 window.addEventListener('resize', resize);
+resize();
 
 const baseColor = '#0f3d57';
 const waveHighlightColors = [
@@ -99,7 +82,7 @@ for (let i = 0; i < waveLayers; i++) {
 }
 
 function getWaveY(x, time) {
-  let y = height * 0.5 + 20 * (0 - 1.5);
+  let y = height * skyRatio + 20 * (0 - 1.5);
   y += Math.sin((x / waveParams[0].wavelength) + (time * waveParams[0].speed) + waveParams[0].phase) * waveParams[0].amplitude * waveAmplitudeMultiplier;
   y += Math.sin((x / (waveParams[0].wavelength * 0.5)) + (time * waveParams[0].speed * 1.5) + waveParams[0].phase) * (waveParams[0].amplitude * 0.3 * waveAmplitudeMultiplier);
   return y;
@@ -112,7 +95,7 @@ function initStars() {
   for (let i = 0; i < starCount; i++) {
     stars.push({
       x: Math.random() * width,
-      y: Math.random() * (height * 0.4),
+      y: Math.random() * (height * skyRatio),
       radius: Math.random() * 1.2 + 0.5,
       baseAlpha: Math.random() * 0.6 + 0.4,
       twinkleFreq: Math.random() * 1.5 + 0.5,
@@ -137,7 +120,7 @@ function drawStars(time) {
 
 function drawMoon() {
   const moonX = width * 0.85;
-  const moonY = height * 0.15;
+  const moonY = height * skyRatio * 0.4;
   const moonRadius = Math.min(height * 0.12, 50);
 
   const gradient = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.9, moonX, moonY, moonRadius * 1.6);
@@ -257,7 +240,6 @@ const flowers = [
   }
 ];
 
-// Message lines for pop animation
 const messageLines = [
   "To my independent, loving girlfriend,",
   "Your strength and warmth light up my world.",
@@ -265,10 +247,9 @@ const messageLines = [
   "Forever yours ❤️"
 ];
 
-const animationDuration = 700; // ms per line animation
-const delayBetweenLines = 350; // ms delay between lines pop
+const animationDuration = 700;
+const delayBetweenLines = 350;
 
-// Elastic ease out function for pop effect (overshoot)
 function easeOutElastic(t) {
   const p = 0.3;
   return Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
@@ -277,17 +258,16 @@ function easeOutElastic(t) {
 function drawWater(time) {
   ctx.clearRect(0, 0, width, height);
 
-  // Sky gradient
-  const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.5);
+  // Sky with adjusted height
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, height * skyRatio);
   skyGradient.addColorStop(0, '#0a1e30');
   skyGradient.addColorStop(1, '#063251');
   ctx.fillStyle = skyGradient;
-  ctx.fillRect(0, 0, width, height * 0.5);
+  ctx.fillRect(0, 0, width, height * skyRatio);
 
   drawStars(time);
   drawMoon();
 
-  // Draw animated message with popping scale per line
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffd6a5';
@@ -313,18 +293,17 @@ function drawWater(time) {
   }
   ctx.restore();
 
-  // Water body
+  // Water area
   ctx.fillStyle = baseColor;
-  ctx.fillRect(0, height * 0.5, width, height * 0.5);
+  ctx.fillRect(0, height * skyRatio, width, height * waterRatio);
 
   for (let l = 0; l < waveLayers; l++) {
     ctx.save();
     let alpha = 0.16 + 0.12 * l;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    // Use waveStep for performance optimization on mobile
     for (let x = 0; x <= width; x += waveStep) {
-      let y = height * 0.5 + 20 * (l - 1.5);
+      let y = height * skyRatio + 20 * (l - 1.5);
       y += Math.sin((x / waveParams[l].wavelength) + (time * waveParams[l].speed) + waveParams[l].phase) * waveParams[l].amplitude * waveAmplitudeMultiplier;
       y += Math.sin((x / (waveParams[l].wavelength * 0.5)) + (time * waveParams[l].speed * 1.5) + waveParams[l].phase) * (waveParams[l].amplitude * 0.3 * waveAmplitudeMultiplier);
       if (x === 0) ctx.moveTo(x, y);
@@ -333,7 +312,7 @@ function drawWater(time) {
     ctx.lineTo(width, height);
     ctx.lineTo(0, height);
     ctx.closePath();
-    let gradient = ctx.createLinearGradient(0, height * 0.5 + 20 * (l - 1.5), 0, height);
+    let gradient = ctx.createLinearGradient(0, height * skyRatio + 20 * (l - 1.5), 0, height);
     gradient.addColorStop(0, baseColor);
     gradient.addColorStop(1, '#063147');
     ctx.fillStyle = gradient;
@@ -346,7 +325,7 @@ function drawWater(time) {
     ctx.globalAlpha = l === 0 ? 0.28 : 0.18;
     ctx.beginPath();
     for (let x = 0; x <= width; x += waveStep) {
-      let y = height * 0.5 + 20 * (l - 0.5);
+      let y = height * skyRatio + 20 * (l - 0.5);
       y += Math.sin((x / (110 + 30 * l)) + (time * (0.22 + 0.07 * l))) * (8 + 4 * l);
       y += Math.sin((x / (60 + 10 * l)) + (time * (0.4 + 0.1 * l))) * (3 + 2 * l);
       if (x === 0) ctx.moveTo(x, y);
