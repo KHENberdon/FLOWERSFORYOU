@@ -2,28 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Canvas 2D Realistic Water Animation with Shooting Star</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas 2D Realistic Water Animation Optimized Frame</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #0a1e30; }
-    canvas { display: block; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #0a1e30;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      max-width: 900px;
+      height: 60vh;
+      max-height: 450px;
+      margin: 0 auto;
+      touch-action: none;
+    }
+    @media (min-width: 600px) {
+      canvas {
+        height: 70vh;
+        max-height: 600px;
+      }
+    }
+    @media (min-width: 900px) {
+      canvas {
+        height: 80vh;
+        max-height: 700px;
+      }
+    }
   </style>
 </head>
 <body>
-<canvas id="water"></canvas>
+  <canvas id="water"></canvas>
 <script>
 const canvas = document.getElementById('water');
 const ctx = canvas.getContext('2d');
-let width = window.innerWidth;
-let height = window.innerHeight;
-canvas.width = width;
-canvas.height = height;
+
+let width, height, dpr;
+let waveStep, waveAmplitudeMultiplier;
 
 function resize() {
+  dpr = window.devicePixelRatio || 1;
   width = window.innerWidth;
-  height = window.innerHeight;
-  canvas.width = width;
-  canvas.height = height;
+  // Cap height with viewport ratio and max height constraints
+  let cappedHeight = window.innerHeight;
+  if (width <= 600) {
+    cappedHeight = Math.min(window.innerHeight, window.innerHeight * 0.6, 450);
+  } else if (width <= 900) {
+    cappedHeight = Math.min(window.innerHeight, window.innerHeight * 0.7, 600);
+  } else {
+    cappedHeight = Math.min(window.innerHeight, window.innerHeight * 0.8, 700);
+  }
+  height = cappedHeight;
+
+  // Set canvas size with device pixel ratio for sharpness
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+  ctx.scale(dpr, dpr);
+
+  // Adjust wave detail / amplitude based on device width
+  if (width <= 600) {
+    waveStep = 4; // fewer points for performance
+    waveAmplitudeMultiplier = 0.7; // reduce amplitude for smaller screen
+  } else if (width <= 900) {
+    waveStep = 3;
+    waveAmplitudeMultiplier = 0.85;
+  } else {
+    waveStep = 2; // higher detail for desktop
+    waveAmplitudeMultiplier = 1;
+  }
 }
+resize();
 window.addEventListener('resize', resize);
 
 const baseColor = '#0f3d57';
@@ -36,7 +91,7 @@ const waveLayers = 4;
 const waveParams = [];
 for (let i = 0; i < waveLayers; i++) {
   waveParams.push({
-    amplitude: 10 + 8 * i,
+    amplitude: (10 + 8 * i),
     wavelength: 180 - 30 * i,
     speed: 0.15 + 0.05 * i,
     phase: Math.random() * Math.PI * 2
@@ -45,23 +100,27 @@ for (let i = 0; i < waveLayers; i++) {
 
 function getWaveY(x, time) {
   let y = height * 0.5 + 20 * (0 - 1.5);
-  y += Math.sin((x / waveParams[0].wavelength) + (time * waveParams[0].speed) + waveParams[0].phase) * waveParams[0].amplitude;
-  y += Math.sin((x / (waveParams[0].wavelength * 0.5)) + (time * waveParams[0].speed * 1.5) + waveParams[0].phase) * (waveParams[0].amplitude * 0.3);
+  y += Math.sin((x / waveParams[0].wavelength) + (time * waveParams[0].speed) + waveParams[0].phase) * waveParams[0].amplitude * waveAmplitudeMultiplier;
+  y += Math.sin((x / (waveParams[0].wavelength * 0.5)) + (time * waveParams[0].speed * 1.5) + waveParams[0].phase) * (waveParams[0].amplitude * 0.3 * waveAmplitudeMultiplier);
   return y;
 }
 
 const starCount = 120;
 const stars = [];
-for (let i = 0; i < starCount; i++) {
-  stars.push({
-    x: Math.random() * width,
-    y: Math.random() * (height * 0.4),
-    radius: Math.random() * 1.2 + 0.5,
-    baseAlpha: Math.random() * 0.6 + 0.4,
-    twinkleFreq: Math.random() * 1.5 + 0.5,
-    twinklePhase: Math.random() * Math.PI * 2,
-  });
+function initStars() {
+  stars.length = 0;
+  for (let i = 0; i < starCount; i++) {
+    stars.push({
+      x: Math.random() * width,
+      y: Math.random() * (height * 0.4),
+      radius: Math.random() * 1.2 + 0.5,
+      baseAlpha: Math.random() * 0.6 + 0.4,
+      twinkleFreq: Math.random() * 1.5 + 0.5,
+      twinklePhase: Math.random() * Math.PI * 2,
+    });
+  }
 }
+initStars();
 
 function drawStars(time) {
   stars.forEach(star => {
@@ -79,22 +138,25 @@ function drawStars(time) {
 function drawMoon() {
   const moonX = width * 0.85;
   const moonY = height * 0.15;
-  const moonRadius = 50;
-  let gradient = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.9, moonX, moonY, moonRadius * 1.6);
+  const moonRadius = Math.min(height * 0.12, 50);
+
+  const gradient = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.9, moonX, moonY, moonRadius * 1.6);
   gradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
   gradient.addColorStop(1, 'rgba(255,255,200, 0)');
   ctx.fillStyle = gradient;
   ctx.beginPath();
   ctx.arc(moonX, moonY, moonRadius * 1.6, 0, Math.PI * 2);
   ctx.fill();
+
   ctx.fillStyle = 'rgba(255, 255, 210, 0.95)';
   ctx.beginPath();
   ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
   ctx.fill();
 }
 
-// Animated lily bases function unchanged
-function drawLily(x, y, scale = 1, reflection = false, petalColor1 = '#f7faf7', petalColor2 = '#e6e6e6', centerColor = '#ffe066', time = 0, phaseOffset = 0) {
+function drawLily(x, y, scale = 1, reflection = false,
+  petalColor1 = '#f7faf7', petalColor2 = '#e6e6e6', centerColor = '#ffe066',
+  time = 0, phaseOffset = 0) {
   ctx.save();
   ctx.translate(x, y);
   if (reflection) {
@@ -195,78 +257,27 @@ const flowers = [
   }
 ];
 
-// Shooting star object and functions
-const shootingStar = {
-  x: -100,
-  y: 0,
-  len: 120,
-  speed: 600, // pixels per second
-  angle: Math.PI / 4,
-  active: false,
-  waitTime: 0,
-  elapsed: 0
-};
+// Message lines for pop animation
+const messageLines = [
+  "To my independent, loving girlfriend,",
+  "Your strength and warmth light up my world.",
+  "I cherish every moment with you.",
+  "Forever yours ❤️"
+];
 
-function resetShootingStar() {
-  shootingStar.x = Math.random() * width * 0.5;
-  shootingStar.y = Math.random() * height * 0.3;
-  shootingStar.len = 80 + Math.random() * 80;
-  shootingStar.speed = 400 + Math.random() * 300;
-  shootingStar.angle = Math.PI / 4 + (Math.random() - 0.5) * 0.3;
-  shootingStar.elapsed = 0;
-  shootingStar.active = true;
-  shootingStar.startTime = performance.now();
-  shootingStar.endX = shootingStar.x + Math.cos(shootingStar.angle) * shootingStar.len * 5;
-  shootingStar.endY = shootingStar.y + Math.sin(shootingStar.angle) * shootingStar.len * 5;
-}
+const animationDuration = 700; // ms per line animation
+const delayBetweenLines = 350; // ms delay between lines pop
 
-resetShootingStar();
-
-function drawShootingStar(deltaTime) {
-  if (!shootingStar.active) {
-    shootingStar.waitTime -= deltaTime;
-    if (shootingStar.waitTime <= 0) {
-      resetShootingStar();
-    }
-    return;
-  }
-
-  shootingStar.elapsed += deltaTime;
-  const distance = shootingStar.speed * shootingStar.elapsed;
-  const currentX = shootingStar.x + Math.cos(shootingStar.angle) * distance;
-  const currentY = shootingStar.y + Math.sin(shootingStar.angle) * distance;
-
-  // If shooting star is out of visible sky, deactivate and wait some time
-  if (currentX > width || currentY > height * 0.5 || currentY < 0) {
-    shootingStar.active = false;
-    shootingStar.waitTime = 4000 + Math.random() * 6000; // wait 4-10 seconds before next
-    return;
-  }
-
-  const trailLen = shootingStar.len;
-  const gradient = ctx.createLinearGradient(currentX, currentY, currentX - Math.cos(shootingStar.angle) * trailLen, currentY - Math.sin(shootingStar.angle) * trailLen);
-  gradient.addColorStop(0, 'rgba(255,255,255,1)');
-  gradient.addColorStop(1, 'rgba(255,255,255,0)');
-
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(currentX, currentY);
-  ctx.lineTo(currentX - Math.cos(shootingStar.angle) * trailLen, currentY - Math.sin(shootingStar.angle) * trailLen);
-  ctx.stroke();
-
-  // Draw star head
-  ctx.beginPath();
-  ctx.arc(currentX, currentY, 3, 0, Math.PI * 2);
-  ctx.fillStyle = 'white';
-  ctx.shadowColor = 'white';
-  ctx.shadowBlur = 10;
-  ctx.fill();
+// Elastic ease out function for pop effect (overshoot)
+function easeOutElastic(t) {
+  const p = 0.3;
+  return Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
 }
 
 function drawWater(time) {
   ctx.clearRect(0, 0, width, height);
 
+  // Sky gradient
   const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.5);
   skyGradient.addColorStop(0, '#0a1e30');
   skyGradient.addColorStop(1, '#063251');
@@ -276,8 +287,33 @@ function drawWater(time) {
   drawStars(time);
   drawMoon();
 
-  drawShootingStar(time * 1000);
+  // Draw animated message with popping scale per line
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd6a5';
+  ctx.shadowColor = '#ffad33';
+  ctx.shadowBlur = 6;
+  ctx.font = `${Math.min(22, height * 0.035)}px Cursive, sans-serif`;
+  const baseY = height * 0.07;
+  const lineHeight = Math.min(30, height * 0.055);
 
+  for (let i = 0; i < messageLines.length; i++) {
+    const lineStartTime = i * delayBetweenLines;
+    let elapsed = (time * 1000) - lineStartTime;
+    let scale = 0;
+    if (elapsed >= 0) {
+      const animProgress = Math.min(elapsed / animationDuration, 1);
+      scale = easeOutElastic(animProgress);
+    }
+    ctx.save();
+    ctx.translate(width / 2, baseY + i * lineHeight);
+    ctx.scale(scale, scale);
+    ctx.fillText(messageLines[i], 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // Water body
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, height * 0.5, width, height * 0.5);
 
@@ -286,10 +322,11 @@ function drawWater(time) {
     let alpha = 0.16 + 0.12 * l;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    for (let x = 0; x <= width; x += 2) {
+    // Use waveStep for performance optimization on mobile
+    for (let x = 0; x <= width; x += waveStep) {
       let y = height * 0.5 + 20 * (l - 1.5);
-      y += Math.sin((x / waveParams[l].wavelength) + (time * waveParams[l].speed) + waveParams[l].phase) * waveParams[l].amplitude;
-      y += Math.sin((x / (waveParams[l].wavelength * 0.5)) + (time * waveParams[l].speed * 1.5) + waveParams[l].phase) * (waveParams[l].amplitude * 0.3);
+      y += Math.sin((x / waveParams[l].wavelength) + (time * waveParams[l].speed) + waveParams[l].phase) * waveParams[l].amplitude * waveAmplitudeMultiplier;
+      y += Math.sin((x / (waveParams[l].wavelength * 0.5)) + (time * waveParams[l].speed * 1.5) + waveParams[l].phase) * (waveParams[l].amplitude * 0.3 * waveAmplitudeMultiplier);
       if (x === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
@@ -308,7 +345,7 @@ function drawWater(time) {
     ctx.save();
     ctx.globalAlpha = l === 0 ? 0.28 : 0.18;
     ctx.beginPath();
-    for (let x = 0; x <= width; x += 2) {
+    for (let x = 0; x <= width; x += waveStep) {
       let y = height * 0.5 + 20 * (l - 0.5);
       y += Math.sin((x / (110 + 30 * l)) + (time * (0.22 + 0.07 * l))) * (8 + 4 * l);
       y += Math.sin((x / (60 + 10 * l)) + (time * (0.4 + 0.1 * l))) * (3 + 2 * l);
@@ -339,3 +376,5 @@ animate(0);
 </script>
 </body>
 </html>
+
+
